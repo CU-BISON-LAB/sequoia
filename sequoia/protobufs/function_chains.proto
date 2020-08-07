@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+message LambdaFunction {
+    string url = 1;
+    int32 id = 2;
+}
+
+message ChainNode {
+    LambdaFunction function = 1;
+    int32 nodeID = 2;
+    repeated ChainNode children = 3;
+    repeated int32 lastNodeIDs = 4;
+    repeated int32 chainFunctionIDs = 5;
+    map<string, string> args = 6;
+}
+
+message ChainState {
+    ChainNode currentNode = 1;
+    int32 instanceID = 2;
+    int32 chainID = 3;
+    map<string, string> flags = 4;
+}
