@@ -12,21 +12,34 @@ from concurrent.futures import ThreadPoolExecutor
 
 # Configuration
 
+# Set to True to disable invoking serverless functions for testing
+mock_invocations = True
+
 # ip/port to listen on
 logger_port = 10000
 serverIp = "127.0.0.1"
 
-# threading details
-fsMetricServerLock = threading.Lock()
-csMetricServerLock = threading.Lock()
-psMetricServerLock = threading.Lock()
-kafkaCRQLengthLock = threading.Lock()
-raceConditionLock = threading.Lock()
-lockFunctionSideLogger = threading.Lock()
-concurrency = 1000
-threadPool = 1000
-pool = threading.Semaphore(threadPool)
-concurrencyPool = threading.Semaphore(concurrency)
+# Scheduling Policies
+# Uncomment only the desired policy
+# Note that the simpleQueuePriorityPolicy requires the enqueue_simple_priority
+# queueing policy to work.
+# All other existing policies require enqueue_pending_or_running.
+def scheduling_policy():
+    return currentlyRunningChainsPolicy()
+    #return getShortestJobFirst()
+    #return fairShareOnChainsPolicy()
+    #return fairShareOnFunctionsPolicy()
+    #return strictFunctionPriorityPolicy()
+    #return hybridBinPackingPolicy()
+    #return simpleQueuePriorityPolicy()
+
+# Queueing Policies
+# Uncomment only the desired policy
+# The only scheduling policy that needs enqueue_simple_priority is
+# simpleQueuePriorityPolicy, all others require enqueue_pending_or_running
+def enqueue_invocation(invocation, chainAlreadyRunning):
+    return enqueue_pending_or_running(invocation, chainAlreadyRunning)
+    #return enqueue_simple_priority(invocation, chainAlreadyRunning)
 
 # hybrid clouds
 localCloudConcurrency = threading.Semaphore(200)
@@ -49,6 +62,17 @@ kafkaCRQLength = 0
 queueSize = 1000000
 inMemorySleep = 0.0005
 
+# threading details
+fsMetricServerLock = threading.Lock()
+csMetricServerLock = threading.Lock()
+psMetricServerLock = threading.Lock()
+kafkaCRQLengthLock = threading.Lock()
+raceConditionLock = threading.Lock()
+lockFunctionSideLogger = threading.Lock()
+concurrency = 1000
+threadPool = 1000
+pool = threading.Semaphore(threadPool)
+concurrencyPool = threading.Semaphore(concurrency)
 
 # SJF dictionary - format (chainId, nodeId): average remaining runtime
 SJFLookup = { (1,1): 20.2,
@@ -71,14 +95,10 @@ def schedule_invocations():
         timeStampList = []
         timeStampList.append(iter) 
         timeStampList.append(time.time())
+
         # Select a function to invoke
-        # (Uncomment only the desired policy)
-        choice = getShortestJobFirst()
-        #choice = currentlyRunningChainsPolicy()
-        #choice = fairShareOnChainsPolicy()
-        #choice = fairShareOnFunctionsPolicy()
-        #choice = strictFunctionPriorityPolicy()
-        #choice = hybridBinPackingPolicy()
+        choice = scheduling_policy()
+
         timeStampList.append(time.time())
         # If a choice was made, submit it to the worker pool to execute
         # Else, continue the loop
@@ -86,7 +106,7 @@ def schedule_invocations():
             iter = iter + 1
             raceConditionLock.acquire()
             timeStampList.append(time.time())
-            executor.submit(subThread, choice, timeStampList)
+            executor.submit(invoker_thread, choice, timeStampList)
 
 # Function Side Metric Server
 # Only this or the consumer side metric server should call updateRecords(timeStamp)
@@ -133,7 +153,7 @@ def kafkaToInMemoryPQ():
       #print("kafka to memory")
       for key,value in msg.items():
         timeStamp = value[0].value
-        inMemoryPQ.put(timeStamp)
+        enqueue_invocation(timeStamp, chainAlreadyRunning=False)
 
 # Read Kafka messages into the in-memory producer queue for performance
 def kafkaToInMemoryPSQ():
@@ -365,7 +385,7 @@ def fsLogging():
 # Entry point for worker threads
 # Invokes a serverless function, then queues any children that need to be
 # invoked after completion, according to the function chain's DAG
-def subThread(chain, timeStampList):
+def invoker_thread(chain, timeStampList):
     timeStampList.append(time.time())
 
     # Get required information
@@ -397,7 +417,12 @@ def subThread(chain, timeStampList):
     timeStampList.append(time.time())
 
     # Do the invocation
-    res = requests.post(url = url, json = PARAMS, timeout = 300)
+    if not mock_invocations:
+        res = requests.post(url = url, json = PARAMS, timeout = 300)
+    else:
+        print("Invoke:", url)
+        time.sleep(5)
+
     timeStampList.append(time.time())
 
     timeStamp = 'consumerSide-end-'+str(time.time())+'-'+str(PARAM)
@@ -409,11 +434,26 @@ def subThread(chain, timeStampList):
     for i in chain.currentNode.children:
       newInvocations.append(ChainState(currentNode=i, instanceID=instanceId, chainID=chainId))
     for invocation in newInvocations:
-      inMemoryCRQ.put(invocation.SerializeToString())
+      enqueue_invocation(invocation.SerializeToString(), chainAlreadyRunning=True)
 
     if hybrid == "local":
       localCloudConcurrency.release()
     timeStampList.append(time.time())
+
+def enqueue_pending_or_running(invocation, chainAlreadyRunning):
+    if chainAlreadyRunning:
+        inMemoryCRQ.put(invocation)
+    else:
+        inMemoryPQ.put(invocation)
+
+def enqueue_simple_priority(invocation, chainAlreadyRunning):
+    chain_state = inMemory_to_chain_state(invocation)
+    if chain_state is None:
+        return
+    if chain_state.chainID % 2 == 0:
+        inMemoryHighPriorityQueue.put(invocation)
+    else:
+        inMemoryLowPriorityQueue.put(invocation)
 
 # Create a connection to the Kafka server
 def connect_kafka_producer(url):
@@ -809,6 +849,20 @@ def hybridBinPackingPolicy():
     else:
       return None
 
+# Simple Queue Priority Policy:
+# Function level first come first serve, but we prioritize functions
+# from the High Priority queue over the Low Priority queue
+def simpleQueuePriorityPolicy():
+  if not(inMemoryHighPriorityQueue.empty()):
+    msg = inMemoryHighPriorityQueue.get()
+    chain = inMemory_to_chain_state(msg)
+    return chain
+  else:
+    if not(inMemoryLowPriorityQueue.empty()):
+      chain = inMemory_to_chain_state(inMemoryLowPriorityQueue.get())
+      return chain
+    else:
+      return None
 
 
 # instantiating MetricServer
@@ -875,6 +929,10 @@ inMemoryCSSQ = queue.Queue(maxsize=queueSize)
 inMemoryCSEQ = queue.Queue(maxsize=queueSize)
 inMemoryPSQ = queue.Queue(maxsize=queueSize)
 inMemoryCSL = queue.Queue(maxsize=queueSize)
+
+# Only needed for the simple queue priority policy
+inMemoryHighPriorityQueue = queue.Queue(maxsize=queueSize)
+inMemoryLowPriorityQueue = queue.Queue(maxsize=queueSize)
 
 # starting various threads
 # kafka to in-memory PQ

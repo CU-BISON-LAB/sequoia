@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n\x15\x66unction_chains.proto\")\n\x0eLambdaFunction\x12\x0b\n\x03url\x18\x01 \x01(\t\x12\n\n\x02id\x18\x02 \x01(\x05\"\xdc\x01\n\tChainNode\x12!\n\x08\x66unction\x18\x01 \x01(\x0b\x32\x0f.LambdaFunction\x12\x0e\n\x06nodeID\x18\x02 \x01(\x05\x12\x1c\n\x08\x63hildren\x18\x03 \x03(\x0b\x32\n.ChainNode\x12\x13\n\x0blastNodeIDs\x18\x04 \x03(\x05\x12\x18\n\x10\x63hainFunctionIDs\x18\x05 \x03(\x05\x12\"\n\x04\x61rgs\x18\x06 \x03(\x0b\x32\x14.ChainNode.ArgsEntry\x1a+\n\tArgsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xa7\x01\n\nChainState\x12\x1f\n\x0b\x63urrentNode\x18\x01 \x01(\x0b\x32\n.ChainNode\x12\x12\n\ninstanceID\x18\x02 \x01(\x05\x12\x0f\n\x07\x63hainID\x18\x03 \x01(\x05\x12%\n\x05\x66lags\x18\x04 \x03(\x0b\x32\x16.ChainState.FlagsEntry\x1a,\n\nFlagsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x62\x06proto3')
+  serialized_pb=_b('\n\x15\x66unction_chains.proto\")\n\x0eLambdaFunction\x12\x0b\n\x03url\x18\x01 \x01(\t\x12\n\n\x02id\x18\x02 \x01(\x05\"\xdc\x01\n\tChainNode\x12!\n\x08\x66unction\x18\x01 \x01(\x0b\x32\x0f.LambdaFunction\x12\x0e\n\x06nodeID\x18\x02 \x01(\x05\x12\x1c\n\x08\x63hildren\x18\x03 \x03(\x0b\x32\n.ChainNode\x12\x13\n\x0blastNodeIDs\x18\x04 \x03(\x05\x12\x18\n\x10\x63hainFunctionIDs\x18\x05 \x03(\x05\x12\"\n\x04\x61rgs\x18\x06 \x03(\x0b\x32\x14.ChainNode.ArgsEntry\x1a+\n\tArgsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xbb\x01\n\nChainState\x12\x1f\n\x0b\x63urrentNode\x18\x01 \x01(\x0b\x32\n.ChainNode\x12\x12\n\ninstanceID\x18\x02 \x01(\x05\x12\x0f\n\x07\x63hainID\x18\x03 \x01(\x05\x12%\n\x05\x66lags\x18\x04 \x03(\x0b\x32\x16.ChainState.FlagsEntry\x12\x12\n\ninvokeTime\x18\x05 \x01(\t\x1a,\n\nFlagsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x62\x06proto3')
 )
 
 
@@ -199,8 +199,8 @@ _CHAINSTATE_FLAGSENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=415,
-  serialized_end=459,
+  serialized_start=435,
+  serialized_end=479,
 )
 
 _CHAINSTATE = _descriptor.Descriptor(
@@ -238,6 +238,13 @@ _CHAINSTATE = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='invokeTime', full_name='ChainState.invokeTime', index=4,
+      number=5, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -251,7 +258,7 @@ _CHAINSTATE = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=292,
-  serialized_end=459,
+  serialized_end=479,
 )
 
 _CHAINNODE_ARGSENTRY.containing_type = _CHAINNODE

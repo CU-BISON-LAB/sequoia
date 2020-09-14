@@ -7,7 +7,10 @@ architecture of Sequoia. Each component of the architecture maps to certain
 parts of the source code, as described in the **Folder 
 Hierarchy** below. 
 
-All of the scheduling policies we have implemented here make decisions when pulling chain invocations out of Kafka queues, in the Policy Framework component of the Consumer script. If multiple queues are needed to implement a new policy, the queue placement logic in `producer_workload_burst.py:pushEvents(...)` and `serial_consumer.py:subThread(...)`
+All of the scheduling policies we have implemented here make decisions when 
+pulling chain invocations out of Kafka queues, in the Policy Framework component 
+of the Consumer script. If multiple queues are needed to implement a new policy, 
+the queue placement logic in `serial_consumer.py:enqueue_invocation(...)`
 
 ## Dependencies
 
@@ -15,6 +18,7 @@ All of the scheduling policies we have implemented here make decisions when pull
   * [Python Kafka client](https://pypi.org/project/kafka/)  
   * [Requests](https://pypi.org/project/requests/)  
   * [Protobufs](https://pypi.org/project/protobuf/)  
+  * [NumPy](https://pypi.org/project/numpy/)  
 * An [Apache Kafka](https://kafka.apache.org/) deployment 
 
 ## Folder Hierarchy

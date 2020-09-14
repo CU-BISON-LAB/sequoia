@@ -19,4 +19,5 @@ message ChainState {
     int32 instanceID = 2;
     int32 chainID = 3;
     map<string, string> flags = 4;
+    string invokeTime = 5;
 }
